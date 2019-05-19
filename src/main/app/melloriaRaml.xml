@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+    <http:listener-config name="melloriaRaml-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration" />
+    <apikit:config name="melloriaRaml-config" raml="melloriaRaml.raml" consoleEnabled="false" doc:name="Router" />
+    <db:generic-config name="Generic_Database_Configuration" url="#[sessionVars.melloria_url]" driverClassName="org.postgresql.Driver" doc:name="Generic Database Configuration" />
+    <flow name="melloriaRaml-main">
+        <http:listener config-ref="melloriaRaml-httpListenerConfig" path="/api/*" doc:name="HTTP" />
+        <set-session-variable variableName="melloria_url" value="${melloria.url}" doc:name="Copy_of_database path" />
+
+        <apikit:router config-ref="melloriaRaml-config" doc:name="APIkit Router" />
+        <exception-strategy ref="melloriaRaml-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy" />
+    </flow>
+    <flow name="melloriaRaml-console">
+        <http:listener config-ref="melloriaRaml-httpListenerConfig" path="/console/*" doc:name="HTTP" />
+        <apikit:console config-ref="melloriaRaml-config" doc:name="APIkit Console" />
+    </flow>
+    <flow name="put:/creature:melloriaRaml-config">
+        <db:insert config-ref="Generic_Database_Configuration" doc:name="Create or Update creature by name">
+            <db:parameterized-query><![CDATA[INSERT INTO creature (magic_type_id, creature_type_id, creature_name, creature_HP, creature_attack, creature_defense, creature_MP, creature_speed, creature_notes)
+VALUES(
+(SELECT magic_type_id from magic_type where magic_type_name = (:magic)), 
+(SELECT creature_type_id from creature_type where creature_type_name = (:creature)),
+(:name),
+(:hp),
+(:attack),
+(:def),
+(:mp),
+(:speed),
+(:notes)
+)
+ON CONFLICT(creature_name) DO UPDATE
+SET 
+magic_type_id = (SELECT magic_type_id from magic_type where magic_type_name = (:magic)), 
+creature_type_id = (SELECT creature_type_id from creature_type where creature_type_name = (:creature)), 
+creature_name = EXCLUDED.creature_name, 
+creature_HP = (:hp), 
+creature_attack = (:attack), 
+creature_defense = (:def),
+creature_MP = (:mp),
+creature_speed = (:speed), 
+creature_notes = (:notes);]]></db:parameterized-query>
+            <db:in-param name="magic" value="#[message.inboundProperties.'http.query.params'.magic_type]" />
+            <db:in-param name="creature" value="#[message.inboundProperties.'http.query.params'.creature_type]" />
+            <db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
+            <db:in-param name="hp" value="#[message.inboundProperties.'http.query.params'.creature_HP]" />
+            <db:in-param name="attack" value="#[message.inboundProperties.'http.query.params'.creature_attack]" />
+            <db:in-param name="def" value="#[message.inboundProperties.'http.query.params'.creature_defense]" />
+            <db:in-param name="mp" value="#[message.inboundProperties.'http.query.params'.creature_MP]" />
+            <db:in-param name="speed" value="#[message.inboundProperties.'http.query.params'.creature_speed]" />
+            <db:in-param name="notes" value="#[message.inboundProperties.'http.query.params'.creature_notes]" />
+        </db:insert>
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Select new creature">
+            <db:parameterized-query><![CDATA[Select * from creature
+where creature_name = (:name)]]></db:parameterized-query>
+            <db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
+        </db:select>
+
+    </flow>
+    <flow name="get:/creature:melloriaRaml-config">
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Select creature by name">
+            <db:parameterized-query><![CDATA[Select
+mt.magic_type_name as "Magic Type",
+ct.creature_type_name as "Creature Type",
+cr.creature_name as "Name",
+cr.creature_HP as "HP",
+cr.creature_attack as "Attack",
+cr.creature_defense as "Defense",
+cr.creature_MP as "MP",
+cr.creature_speed as "Speed",
+cr.creature_notes as "Notes"
+from creature as cr
+join magic_type as mt on mt.magic_type_id = cr.magic_type_id
+join creature_type as ct on ct.creature_type_id = cr.creature_type_id
+where cr.creature_name = (:name)]]></db:parameterized-query>
+<db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
+        </db:select>
+
+    </flow>
+    <flow name="delete:/creature:melloriaRaml-config">
+        <db:delete config-ref="Generic_Database_Configuration" doc:name="Delete creature by name">
+            <db:parameterized-query><![CDATA[DELETE from creature
+where creature_name = (:name)]]></db:parameterized-query>
+<db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
+        </db:delete>
+    </flow>
+    <flow name="get:/creature_names:melloriaRaml-config">
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Select all creatures">
+            <db:parameterized-query><![CDATA[Select creature_name from creature
+order by creature_name]]></db:parameterized-query>
+        </db:select>
+
+    </flow>
+    <apikit:mapping-exception-strategy name="melloriaRaml-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>
