@@ -10,7 +10,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <db:generic-config name="Generic_Database_Configuration" url="#[sessionVars.melloria_url]" driverClassName="org.postgresql.Driver" doc:name="Generic Database Configuration" />
     <flow name="melloriaRaml-main">
         <http:listener config-ref="melloriaRaml-httpListenerConfig" path="/api/*" doc:name="HTTP" />
-        <set-session-variable variableName="melloria_url" value="${melloria.url}" doc:name="Copy_of_database path" />
+        <set-session-variable variableName="melloria_url" value="${melloria_url}" doc:name="Copy_of_database path" />
 
         <apikit:router config-ref="melloriaRaml-config" doc:name="APIkit Router" />
         <exception-strategy ref="melloriaRaml-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy" />

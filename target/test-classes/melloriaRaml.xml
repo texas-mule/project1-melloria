@@ -10,7 +10,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     <db:generic-config name="Generic_Database_Configuration" url="#[sessionVars.melloria_url]" driverClassName="org.postgresql.Driver" doc:name="Generic Database Configuration" />
     <flow name="melloriaRaml-main">
         <http:listener config-ref="melloriaRaml-httpListenerConfig" path="/api/*" doc:name="HTTP" />
-        <set-session-variable variableName="melloria_url" value="${melloria.url}" doc:name="Copy_of_database path" />
+        <set-session-variable variableName="melloria_url" value="${melloria_url}" doc:name="Copy_of_database path" />
 
         <apikit:router config-ref="melloriaRaml-config" doc:name="APIkit Router" />
         <exception-strategy ref="melloriaRaml-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy" />
@@ -59,7 +59,7 @@ creature_notes = (:notes);]]></db:parameterized-query>
 where creature_name = (:name)]]></db:parameterized-query>
             <db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
         </db:select>
-        <json:object-to-json-transformer doc:name="Object to JSON" />
+
     </flow>
     <flow name="get:/creature:melloriaRaml-config">
         <db:select config-ref="Generic_Database_Configuration" doc:name="Select creature by name">
@@ -80,7 +80,6 @@ where cr.creature_name = (:name)]]></db:parameterized-query>
 <db:in-param name="name" value="#[message.inboundProperties.'http.query.params'.creature_name]" />
         </db:select>
 
-        <json:object-to-json-transformer doc:name="Object to JSON" />
     </flow>
     <flow name="delete:/creature:melloriaRaml-config">
         <db:delete config-ref="Generic_Database_Configuration" doc:name="Delete creature by name">
@@ -94,7 +93,6 @@ where creature_name = (:name)]]></db:parameterized-query>
             <db:parameterized-query><![CDATA[Select creature_name from creature
 order by creature_name]]></db:parameterized-query>
         </db:select>
-        <json:object-to-json-transformer doc:name="Object to JSON"/>
 
     </flow>
     <apikit:mapping-exception-strategy name="melloriaRaml-apiKitGlobalExceptionMapping">

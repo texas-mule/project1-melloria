@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 	
     <flow name="melloriamuleFlow">
         <http:listener config-ref="melloriaRaml-httpListenerConfig" path="/" doc:name="HTTP" />
-        <set-session-variable variableName="melloria.url" value="${melloria.url}" doc:name="database path"/>
+        <set-session-variable variableName="melloria_url" value="${melloria_url}" doc:name="database path"/>
         <set-payload doc:name="Set Payload" value="testing"/>
     </flow>
 </mule>
